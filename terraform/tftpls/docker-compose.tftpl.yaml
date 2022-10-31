@@ -1,0 +1,82 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ee:latest
+    restart: always
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./data/gitlab/config:/etc/gitlab
+      - ./data/gitlab/logs:/var/log/gitlab
+      - ./data/gitlab/data:/var/opt/gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${gitlab.url}'
+
+        # For monitoring
+        grafana['enable'] = true
+        grafana['disable_login_form'] = false
+        grafana['admin_password'] = 'admin'
+        prometheus['scrape_configs'] = [
+          {
+            'job_name': 'gitlab-runner',
+            'static_configs' => [
+              'targets' => ['gitlab-runner:9252'],
+            ],
+          },
+          {
+            'job_name': 'sonarqube',
+            'metrics_path': 'api/monitoring/metrics',
+            'authorization': {
+              'type': 'Bearer',
+              'credentials': 'prometheus'
+            },
+            'static_configs' => [
+              'targets' => ['sonarqube:9000'],
+            ],
+          },
+        ]
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    volumes:
+      - ./data/gitlab-runner:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "9252:9252"
+  sonarqube:
+    build:
+      context: .
+      dockerfile: sonarqube.dockerfile
+      args:
+        SONARQUBE_VERSION: 9.6.1-community
+        PLUGIN_VERSION: 1.12.0
+    hostname: sonarqube
+    container_name: sonarqube
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+  sonarqube-db:
+    image: postgres:13.8
+    hostname: postgresql
+    container_name: postgresql
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  postgresql:
+  postgresql_data:

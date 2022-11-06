@@ -1,13 +1,13 @@
-concurrent = 10
+concurrent = 1
 listen_address = ":9252"
 check_interval = 0
 
 [[runners]]
-  name = "gitlab-aws-autoscaler"
+  name = "docker-executer"
   url = "${gitlab.url}"
   token = $${RUNNER_TOKEN}
   executor = "docker"
-  limit = 20
+  limit = 1
   [runners.docker]
     tls_verify = false
     image = "alpine"

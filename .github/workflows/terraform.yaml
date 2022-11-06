@@ -1,0 +1,52 @@
+name: 'tfsec/Terraform GitHub Actions'
+on: [pull_request]
+jobs:
+  terraform-ci:
+    name: terraform-ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: tfsec
+        uses: reviewdog/action-tfsec@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          working_directory: ./
+          level: info
+
+      - name: Setup terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - uses: terraform-linters/setup-tflint@v2
+        name: Setup TFLint
+        with:
+          tflint_version: v0.42.2
+
+      - name: Show version
+        run: tflint --version
+
+      - name: Init TFLint
+        run: tflint --init
+
+      - name: Run TFLint
+        run: find . -name "*.tf" -not -path "*/.terraform/*" -printf "%h\n" | sort -u | xargs -I {} tflint {} -f compact
+          
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+        working-directory: ./
+
+      - name: Render terraform docs and push changes back to PR
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          find-dir: "."
+          output-file: README.md
+          output-method: inject
+          git-push: "true"

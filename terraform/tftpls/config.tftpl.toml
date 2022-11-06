@@ -1,0 +1,27 @@
+concurrent = 1
+listen_address = ":9252"
+check_interval = 0
+
+[[runners]]
+  name = "docker-executer"
+  url = "${gitlab.url}"
+  token = $${RUNNER_TOKEN}
+  executor = "docker"
+  limit = 1
+  [runners.docker]
+    tls_verify = false
+    image = "alpine"
+    privileged = false
+    volumes = [
+      "/cache",
+      "/var/run/docker.sock:/var/run/docker.sock",
+    ]
+  [runners.cache]
+    Type = "s3"
+    Shared = true
+    Path = "runner"
+    [runners.cache.s3]
+      ServerAddress = "s3.amazonaws.com"
+      AuthenticationType = "iam"
+      BucketName = "${gitlab.runner.s3.bucket_name}"
+      BucketLocation = "${gitlab.runner.s3.bucket_location}"

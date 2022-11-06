@@ -26,14 +26,6 @@ variable "gitlab" {
   default = {}
 }
 
-variable "gitlab_runner" {
-  description = "GitLab Runner"
-  type = object({
-    instance_type = optional(string, "t3.small")
-  })
-  default = {}
-}
-
 variable "name_common" {
   description = "Common name"
   type        = string
